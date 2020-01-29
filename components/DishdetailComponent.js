@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {View, ScrollView, FlatList,Text,StyleSheet,Modal,Button,Alert, PanResponder,  } from 'react-native';
+import { Text, View, ScrollView, FlatList, Modal, StyleSheet, Button, Alert, PanResponder, Share } from 'react-native';
 import { Card, Icon, Input, } from 'react-native-elements';
 import {Rating,AirbnbRating  } from "react-native-ratings";
 import { connect } from 'react-redux';
@@ -67,6 +67,15 @@ function RenderDish(props) {
         },
         
     });
+    const shareDish = (title, message, url) => {
+        Share.share({
+            title: title,
+            message: title + ': ' + message + ' ' + url,
+            url: url
+        },{
+            dialogTitle: 'Share ' + title
+        })
+    }
         if (dish != null) {
             return(
                 <Animatable.View animation="fadeInDown" duration={2000} delay={1000}
@@ -95,6 +104,13 @@ function RenderDish(props) {
                                 name={"pencil"}
                                 onPress={()=>props.toggleModal()}
                                 ></Icon>
+                                <Icon
+                                raised
+                                reverse
+                                name='share'
+                                type='font-awesome'
+                                color='#51D2A8'
+                                onPress={() => shareDish(dish.name, dish.description, baseUrl + dish.image)} />
                         </View>
                 </Card>
                 </Animatable.View>

@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
-import { Text, View, StyleSheet, Picker, Switch, Button, Modal,ScrollView,Alert } from 'react-native';
+import { Text, View, StyleSheet, Picker, Switch, Button, Modal,ScrollView,Alert, Platform } from 'react-native';
 import { Card } from 'react-native-elements';
 import DatePicker from 'react-native-datepicker'
 import * as Animatable from 'react-native-animatable';
+import {Notifications} from 'expo';
+import * as Permissions from 'expo-permissions';
+import * as Calendar from 'expo-calendar';
 class Reservation extends Component {
 
     constructor(props) {
@@ -15,6 +18,10 @@ class Reservation extends Component {
         }
     }
 
+    async componentDidMount() {
+        console.log(await Calendar.getDefaultCalendarAsync());
+    }
+
     static navigationOptions = {
         title: 'Reserve Table',
     };
@@ -25,7 +32,8 @@ class Reservation extends Component {
 
     handleReservation() {
         console.log(JSON.stringify(this.state));
-        
+        this.addReservationToCalendar(this.state.date)
+        this.resetForm();
     }
 
     resetForm() {
@@ -37,6 +45,79 @@ class Reservation extends Component {
         });
     }
     
+    async obtainNotificationPermission() {
+        
+        let permission = await Permissions.getAsync(Permissions.USER_FACING_NOTIFICATIONS);
+        if (permission.status !== 'granted') {
+            permission = await Permissions.askAsync(Permissions.USER_FACING_NOTIFICATIONS);
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission not granted to show notifications');
+            }
+        }
+        return permission;
+    }
+    async presentLocalNotification(date) {
+        await this.obtainNotificationPermission();
+        Notifications.presentLocalNotificationAsync({
+            title: 'Your Reservation',
+            body: 'Reservation for '+ date + ' requested',
+            ios: {
+                sound: true,
+            },
+            android: {
+                vibrate: true,
+                color: '#512DA8',
+                sound:true,
+            }
+        });
+    }
+
+    async obtainCalendarPermission() {
+        let permission = await Permissions.askAsync(Permissions.CALENDAR);
+        if(permission.status !== 'granted'){
+            permission = await Permissions.askAsync(Permissions.CALENDAR);
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission not granted to use Calendar');
+            }
+        }
+    }    
+
+    async  createCalendar() {
+        const defaultCalendarSource =
+          Platform.OS === 'ios'
+            ? await getDefaultCalendarSource()
+            : { isLocalAccount: true, name: 'Expo Calendar' };
+        const newCalendarID = await Calendar.createCalendarAsync({
+          title: 'Expo Calendar',
+          color: 'blue',
+          entityType: Calendar.EntityTypes.EVENT,
+          sourceId: defaultCalendarSource.id,
+          source: defaultCalendarSource,
+          name: 'internalCalendarName',
+          ownerAccount: 'personal',
+          accessLevel: Calendar.CalendarAccessLevel.OWNER,
+        });
+        console.log(`Your new calendar ID is: ${newCalendarID}`);
+        return newCalendarID;
+      }
+
+    async addReservationToCalendar(date){
+        await this.obtainCalendarPermission();
+        const id = await this.createCalendar();
+          Calendar.createEventAsync(id,{
+            title:'Con Fusion',
+            startDate:new Date(Date.parse(date)),
+            endDate:new Date(Date.parse(date)+2*60*60*1000),
+            timeZone:'Asia/Hong_Kong',
+            location:'121, Clear Water Bay Road, Clear Water Bay, Kowloon, Hong Kong'
+        }).then( event => {
+            console.log('success',event);
+              })
+        .catch( error => {
+            console.log('failure',error);
+            });
+    } 
+
     render() {
         return(
             <ScrollView>
@@ -105,7 +186,9 @@ class Reservation extends Component {
                                     },
                                     {
                                         text: 'OK',
-                                        onPress: () => {this.handleReservation()}
+                                        onPress: () => {this.handleReservation(),
+                                            this.presentLocalNotification(this.state.date)
+                                        }
                                     }
                                 ],
                                 { cancelable: false }
